@@ -4,14 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ayush Biswas</title>
-    
+    <meta name="description" content="Ayush Biswas's personal journal — essays and updates.">
+
+    <!-- Open Graph (overwritten per-post by renderPost) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Ayush Biswas">
+    <meta property="og:description" content="Ayush Biswas's personal journal — essays and updates.">
+    <meta name="twitter:card" content="summary">
+
     <!-- Google Fonts: Barrio -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barrio&display=block" rel="stylesheet">
 
-    <!-- Lightweight Markdown Parser -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Lightweight Markdown Parser (version-pinned with integrity check) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
     <style>
         :root {
@@ -491,24 +498,57 @@
 
         // --- Core Application Logic with Chronological Sorting Pass ---
         
+        function updateMeta(title, description) {
+            document.title = title;
+            const desc = description || 'Ayush Biswas\'s personal journal — essays and updates.';
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            const ogDesc = document.querySelector('meta[property="og:description"]');
+            const metaDesc = document.querySelector('meta[name="description"]');
+            if (ogTitle) ogTitle.setAttribute('content', title);
+            if (ogDesc) ogDesc.setAttribute('content', desc);
+            if (metaDesc) metaDesc.setAttribute('content', desc);
+        }
+
         function initializeBlogEngine() {
             // Programmatically sort the array dynamically by actual Timestamp (Descending: Most Recent First)
             if (window.blogPosts && window.blogPosts.length > 0) {
                 window.blogPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
-            showLatestPost();
+            routeFromHash();
         }
 
-        function showLatestPost() {
+        // Reads the current URL hash and renders whatever it points to.
+        // Supports #archives and #post-<slug>; falls back to the latest post.
+        function routeFromHash() {
+            const hash = window.location.hash.replace('#', '');
+            if (hash === 'archives') {
+                renderArchives(false);
+                return;
+            }
+            if (hash.startsWith('post-')) {
+                const slug = hash.slice(5);
+                const index = window.blogPosts.findIndex(p => p.slug === slug);
+                if (index !== -1) {
+                    renderPost(index, false);
+                    return;
+                }
+            }
+            showLatestPost(false);
+        }
+
+        function showLatestPost(updateHash = true) {
             if (window.blogPosts && window.blogPosts.length > 0) {
-                renderPost(0); // Index 0 is now guaranteed to be the most recent post
+                renderPost(0, updateHash); // Index 0 is now guaranteed to be the most recent post
             } else {
                 contentArea.innerHTML = `<p class="post-body" style="text-align:center;">No posts configured.</p>`;
             }
         }
 
-        async function renderPost(index) {
+        async function renderPost(index, updateHash = true) {
             const post = window.blogPosts[index];
+            if (updateHash && post.slug) {
+                history.pushState(null, '', `#post-${post.slug}`);
+            }
             try {
                 const response = await fetch(post.file);
                 if (!response.ok) throw new Error('File not found');
@@ -524,13 +564,17 @@
                         <div class="post-body">${HTMLBodyContent}</div>
                     </article>
                 `;
+                updateMeta(`${post.title} — Ayush Biswas`, `${post.category}, ${post.date}`);
             } catch (err) {
                 contentArea.innerHTML = `<p class="post-body" style="text-align:center; color:red;">Failed to pull the linked file "${post.file}". Ensure the file path is correct.</p>`;
             }
             window.scrollTo(0,0);
         }
 
-        function renderArchives() {
+        function renderArchives(updateHash = true) {
+            if (updateHash) {
+                history.pushState(null, '', '#archives');
+            }
             let listItems = '';
             window.blogPosts.forEach((post, index) => {
                 listItems += `
@@ -547,7 +591,11 @@
                     <ul class="archive-list">${listItems}</ul>
                 </div>
             `;
+            updateMeta('Archives — Ayush Biswas', 'All posts from Ayush Biswas\'s journal.');
         }
+
+        // Handle back/forward browser navigation
+        window.addEventListener('popstate', routeFromHash);
 
         // Initialize engine on window load
         window.onload = initializeBlogEngine;

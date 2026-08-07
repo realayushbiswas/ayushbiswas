@@ -4,12 +4,14 @@ window.blogPosts = [
         title: "The Digital Cleansing",
         date: "June 24, 2026",
         category: "Essays",
-        file: "posts/digital-cleansing.md"
+        file: "posts/digital-cleansing.md",
+        slug: "digital-cleansing"
     },
     {
         title: "Building in Public",
         date: "May 12, 2026",
         category: "Updates",
-        file: "posts/building-in-public.md"
+        file: "posts/building-in-public.md",
+        slug: "building-in-public"
     }
 ];
